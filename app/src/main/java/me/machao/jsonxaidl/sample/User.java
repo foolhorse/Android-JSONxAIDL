@@ -1,5 +1,7 @@
 package me.machao.jsonxaidl.sample;
 
+import android.os.Handler;
+
 /**
  * Date  2019/1/30
  *
@@ -31,7 +33,12 @@ public class User implements IUser {
     }
 
     @Override
-    public void setCallback(Call call) {
+    public void setCallback(final Call call) {
         this.call = call;
+
+
+        call.invoke();
+
+
     }
 }

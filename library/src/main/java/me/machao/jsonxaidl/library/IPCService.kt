@@ -65,7 +65,7 @@ class IPCService : Service() {
                                 } else {
                                     getInstanceMethod!!.invoke(null, *parameterObjArr)
                                 }
-                                ClassManager.instance.putObject(request.objId, request.className!!, obj!!)
+                                ClassManager.instance.putObject(request.objId, obj!!)
                                 // TODO wrap response?
                                 return Gson().toJson(obj)
                             } catch (e: IllegalAccessException) {
@@ -101,7 +101,7 @@ class IPCService : Service() {
                                 } else {
                                     constructorMethod!!.newInstance(*parameterObjArr)
                                 }
-                                ClassManager.instance.putObject(request.objId, request.className!!, obj!!)
+                                ClassManager.instance.putObject(request.objId, obj!!)
                                 // TODO wrap response?
                                 return Gson().toJson(obj)
                             } catch (e: IllegalAccessException) {
@@ -111,9 +111,8 @@ class IPCService : Service() {
                             }
                         }
                         INVOKE_METHOD -> {
-                            val obj = ClassManager.instance.getObject(request.className!!)
-                            val method =
-                                ClassManager.instance.getMethod(request.className!!, request.methodName!!)
+                            val obj = ClassManager.instance.getObject(request.objId!!)
+                            val method = ClassManager.instance.getMethod(request.className!!, request.methodName!!)
 
                             val parameterObjArr = generateParameterObjectArray(request)
 
@@ -171,10 +170,10 @@ class IPCService : Service() {
         for (i in requestParameters.indices) {
             val clz = ClassManager.instance.getClassType(requestParameters[i].className)
 
-            if (clz != null && clz.isInterface) {
+            if (requestParameters[i].callbackObjId != null) {
                 val ipcCallbackAidlInterface = callbackInterfaceMap[request.pid]
                 if (ipcCallbackAidlInterface != null) {
-                    parameters[i] = generateCallbackProxy(clz, ipcCallbackAidlInterface)
+                    parameters[i] = generateCallbackProxy(clz!!, requestParameters[i].callbackObjId!! ,ipcCallbackAidlInterface)
                 }
             } else {
                 parameters[i] = Gson().fromJson(requestParameters[i].value, clz!!)
@@ -199,20 +198,21 @@ class IPCService : Service() {
 
     private fun generateCallbackProxy(
         callbackInterface: Class<*>,
+        callbackObjectId:String,
         ipcCallbackAidlInterface: IPCCallbackAidlInterface
     ): Any {
         val proxy = Proxy.newProxyInstance(
             callbackInterface.classLoader,
-            arrayOf<Class<*>>(callbackInterface),
+            arrayOf(callbackInterface),
             object : InvocationHandler {
                 override fun invoke(proxy: Any?, method: Method?, args: Array<Any>?): Any? {
 
                     Log.e(TAG, "Callback InvocationHandler invoke args: $args")
                     // TODO
                     val responseStr = if (args == null) {
-                        sendCallbackRequest(ipcCallbackAidlInterface, callbackInterface, method)
+                        sendCallbackRequest(ipcCallbackAidlInterface, callbackInterface,callbackObjectId, method)
                     } else {
-                        sendCallbackRequest(ipcCallbackAidlInterface, callbackInterface, method, *args)
+                        sendCallbackRequest(ipcCallbackAidlInterface, callbackInterface,callbackObjectId, method, *args)
                     }
                     return if (TextUtils.isEmpty(responseStr) || TextUtils.equals(responseStr, "null")) {
                         null
@@ -224,7 +224,8 @@ class IPCService : Service() {
 
             })
         // save object for server process gc
-        GCManager.instance.addRef(UUID.randomUUID().toString(), proxy) // 通过 proxyId 找到服务进程的对应obj
+        // TODO 在客户端进程上的 gc
+//        GCManager.instance.addRef(UUID.randomUUID().toString(), proxy) // 通过 proxyId 找到服务进程的对应obj
 
         return proxy
     }
@@ -233,18 +234,19 @@ class IPCService : Service() {
     private fun sendCallbackRequest(
         ipcCallbackAidlInterface: IPCCallbackAidlInterface,
         clz: Class<*>,
+        objId:String,
         method: Method?,
         vararg args: Any?
     ): String? {
         return try {
-            ipcCallbackAidlInterface!!.callback(generateInvokeMethodRequest(clz, method, *args))
+            ipcCallbackAidlInterface.callback(generateInvokeCallbackMethodRequest(objId,clz, method, *args))
         } catch (e: RemoteException) {
             e.printStackTrace()
             null
         }
     }
 
-    private fun generateInvokeMethodRequest(clz: Class<*>, method: Method?, vararg args: Any?): String {
+    private fun generateInvokeCallbackMethodRequest(objId:String,clz: Class<*>, method: Method?, vararg args: Any?): String {
         val requestParameters = mutableListOf<RequestParameter>()
         if (args.isNotEmpty()) {
             args.filterNotNull()
@@ -252,18 +254,21 @@ class IPCService : Service() {
                     requestParameters.add(
                         RequestParameter(
                             it.javaClass.name,
-                            Gson().toJson(it)
+                            Gson().toJson(it),
+                            null
                         )
                     )
                 }
         }
 
-        val className = clz.getAnnotation(ImplClass::class.java)!!.value
+//        val className = clz.getAnnotation(ImplClass::class.java)!!.value
+        // TODO 要不要放 className
+        val className = ""
         val methodName = method?.name
         val request =
             Request(
                 Process.myPid(),
-                null,
+                objId,
                 IPCService.INVOKE_METHOD,
                 className,
                 methodName,

@@ -1,7 +1,7 @@
 package me.machao.jsonxaidl.library.util
 
 import android.util.Log
-import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 
 /**
  * Date  2019/1/25
@@ -9,10 +9,16 @@ import com.google.gson.Gson
  */
 object GsonExt {
 
-    private val gson = Gson()
+    private val gson = GsonBuilder()
+        .registerTypeAdapterFactory(ClassTypeAdapterFactory())
+        .create()
 
     fun Any.toJson(): String {
         return gson.toJson(this)
+    }
+
+    fun <T> String.fromJson(clz: Class<*>): T {
+        return gson.fromJson(this, clz) as T
     }
 
 }

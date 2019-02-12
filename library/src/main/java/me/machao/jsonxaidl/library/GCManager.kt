@@ -23,8 +23,14 @@ class GCManager {
                 }
     }
 
-    private val refMap = ConcurrentHashMap<PhantomReference<Any>, String>()
     private val referenceQueue = ReferenceQueue<Any>()
+
+    /**
+     * proxy object
+     */
+    private val refMap = ConcurrentHashMap<PhantomReference<Any>, String>()
+
+
     private lateinit var gcThread: GCThread
 
     init {
@@ -40,10 +46,13 @@ class GCManager {
         gcThread.interrupt()
     }
 
+    /**
+     * call from client process
+     */
     fun addRef(objId: String, obj: Any) {
         Log.e(TAG, "gc addRef")
 
-        gc()
+        gc() // gc server process obj
         refMap.putIfAbsent(PhantomReference(obj, referenceQueue), objId)
     }
 

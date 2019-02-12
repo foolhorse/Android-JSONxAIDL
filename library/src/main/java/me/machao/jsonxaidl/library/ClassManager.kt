@@ -29,6 +29,7 @@ internal class ClassManager {
     private val methodMap = ConcurrentHashMap<Class<*>, Map<String, Method>>()
 
     private val id2ObjectMap = ConcurrentHashMap<String, Any>()
+
     private val objectMap = ConcurrentHashMap<String, Any>()
 
     fun putClass(clz: Class<*>) {
@@ -55,17 +56,34 @@ internal class ClassManager {
         return map!![methodName]
     }
 
-    fun getObject(name: String): Any? {
-        return objectMap[name]
-    }
+//    fun getObject(name: String): Any? {
+//        return objectMap[name]
+//    }
 
-    // TODO object uuid
-    fun putObject(id: String?, name: String, obj: Any) {
-        objectMap[name] = obj
-        if (id != null) {
+//    fun putObject(id: String?, name: String, obj: Any) {
+//        objectMap[name] = obj
+//        if (id != null) {
+//            id2ObjectMap.putIfAbsent(id, obj)
+//        }
+//    }
+
+    fun putObject(id: String?, obj: Any) {
+        if (id == null) {
+            Log.e(TAG, "putObject id == null")
+        } else {
             id2ObjectMap.putIfAbsent(id, obj)
         }
     }
+
+    fun getObject(id: String?): Any? {
+        return if (id == null) {
+            Log.e(TAG, "getObject id == null")
+            null
+        } else {
+            id2ObjectMap[id]
+        }
+    }
+
 
     fun removeObject(id: String) {
         id2ObjectMap.remove(id)

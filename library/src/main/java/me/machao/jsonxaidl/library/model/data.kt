@@ -17,8 +17,10 @@ data class Request(
 )
 
 data class RequestParameter(
-    var className: String,
-    var value: String)
+    var className: String,  // TODO 改成 Class<*> ?
+    var value: String?,
+    var callbackObjId:String?
+)
 
 data class Response(
     val data: Any)

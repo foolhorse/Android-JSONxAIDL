@@ -32,6 +32,7 @@ class GCThread(
                 Log.e(TAG, "gc ref:" + reference)
 
                 while (reference == null) {
+                    // TODO 还需要发到客户端的另一种情况，callbakc的情况
                     // send to server process
                     IPCManager.instance.gc(objIdToRemove)
                     objIdToRemove.clear()

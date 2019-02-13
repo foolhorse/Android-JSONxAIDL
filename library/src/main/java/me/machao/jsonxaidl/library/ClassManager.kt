@@ -3,6 +3,7 @@ package me.machao.jsonxaidl.library
 import android.text.TextUtils
 import android.util.Log
 import java.lang.IllegalArgumentException
+import java.lang.IllegalStateException
 import java.lang.reflect.Constructor
 import java.lang.reflect.Method
 import java.util.HashMap
@@ -56,16 +57,14 @@ internal class ClassManager {
         return map!![methodName]
     }
 
-//    fun getObject(name: String): Any? {
-//        return objectMap[name]
-//    }
-
-//    fun putObject(id: String?, name: String, obj: Any) {
-//        objectMap[name] = obj
-//        if (id != null) {
-//            id2ObjectMap.putIfAbsent(id, obj)
-//        }
-//    }
+    fun getMethod(objId: String, methodName: String, parameterTypes: Array<Class<*>>?): Method? {
+        val obj = id2ObjectMap[objId] ?: return null
+        return if (parameterTypes == null) {
+            obj.javaClass.getMethod(methodName)
+        } else {
+            obj.javaClass.getMethod(methodName, *parameterTypes)
+        }
+    }
 
     fun putObject(id: String?, obj: Any) {
         if (id == null) {
@@ -107,30 +106,58 @@ internal class ClassManager {
     }
 
     @Throws(Exception::class)
+    fun getClassTypeArray(classNameArray: Array<String>): Array<Class<*>> {
+        val parameterTypeArrNotNull = mutableListOf<Class<*>>()
+
+        for (className in classNameArray) {
+            val clz = ClassManager.instance.getClassType(className)
+            if (clz == null) {
+                throw IllegalStateException("can't find class in class manager by given class name")
+            } else {
+                parameterTypeArrNotNull.add(clz)
+            }
+        }
+        return parameterTypeArrNotNull.toTypedArray()
+    }
+
+
+    @Throws(Exception::class)
     fun getConstructor(clazzName: String?, parameterTypes: Array<Class<*>>?): Constructor<*>? {
         return getConstructor(classMap[clazzName], parameterTypes)
     }
 
-    @Throws(Exception::class)
+
     fun getConstructor(clazz: Class<*>?, parameterTypes: Array<Class<*>>?): Constructor<*>? {
         if (clazz == null) {
             return null
         }
-        var result: Constructor<*>? = null
-        for (constructor in clazz.constructors) {
-            if (classAssignable(constructor.parameterTypes, parameterTypes ?: emptyArray())) {
-                if (result != null) {
-                    throw IllegalArgumentException("${clazz.name} has too many constructors whose parameter types match the required types.")
-                } else {
-                    result = constructor
-                }
-            }
+        return if (parameterTypes == null) {
+            clazz.getConstructor()
+        } else {
+            clazz.getConstructor(*parameterTypes)
         }
-        if (result == null) {
-            throw NoSuchMethodException("${clazz.name} do not have a constructor whose parameter types match the required types.")
-        }
-        return result
     }
+
+//    @Throws(Exception::class)
+//    fun getConstructor(clazz: Class<*>?, parameterTypes: Array<Class<*>>?): Constructor<*>? {
+//        if (clazz == null) {
+//            return null
+//        }
+//        var result: Constructor<*>? = null
+//        for (constructor in clazz.constructors) {
+//            if (classAssignable(constructor.parameterTypes, parameterTypes ?: emptyArray())) {
+//                if (result != null) {
+//                    throw IllegalArgumentException("${clazz.name} has too many constructors whose parameter types match the required types.")
+//                } else {
+//                    result = constructor
+//                }
+//            }
+//        }
+//        if (result == null) {
+//            throw NoSuchMethodException("${clazz.name} do not have a constructor whose parameter types match the required types.")
+//        }
+//        return result
+//    }
 
     private fun classAssignable(classes1: Array<Class<*>>, classes2: Array<Class<*>>): Boolean {
         if (classes1.size != classes2.size) {

@@ -5,5 +5,5 @@ package me.machao.jsonxaidl.library;
 
 interface IPCCallbackAidlInterface {
 
-      String callback(String response);
+      String callback(String request);
 }
